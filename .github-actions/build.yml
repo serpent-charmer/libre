@@ -2,46 +2,39 @@
 
 name: RP2-CI-CD
 
-# Controls when the workflow will run (the event that triggers the workflow)
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
     branches: [ "build" ]
   pull_request:
     branches: [ "build" ]
 
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
-# Specify one or more jobs to run for the workflow
 jobs:
-  # This workflow contains a single job called "build"
-  # Pick up the job name
-  lint:
-    # The type of runner that the job will run on
-    # to run the job on latest ubuntu machine. (the machine each job should run (e.g. ubuntu-latest))
+  build_jar:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    # Determine a sequence of tasks will be executed for each job
     steps:
       - name: Checkout the code
         uses: actions/checkout@v3
+      - name: Setup Java
         uses: actions/setup-java@v3
-
         with:
-            distribution: 'temurin'
-            java-version: '8'
-            cache: 'gradle'
-
-      # (run) One of step parameters, and use it to execute or hitting a command
+            distribution: "temurin"
+            java-version: "8"
+            cache: "gradle"
       - name: Run build
         run: ./gradlew build
-
-      # (uses) it is a step parameters, and use it to install environment or a repo from any marketplace
-      # Publish the lint report as a github artifact
-      - name: Upload html test report
-        uses: actions/upload-artifact@v3
+      - uses: benjlevesque/short-sha@v2.2
+        id: ssha
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
         with:
-          path: ./build/libs/
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ./build/libs/*
+          file_glob: true
+          tag: ${{ github.ref }}-${{ steps.ssha.outputs.sha }}
+          overwrite: true
+          body: "Automatic build message"
